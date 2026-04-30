@@ -52,13 +52,9 @@ namespace GcpSecretManagerVault
                 }
 
                 // Create HttpClient with no proxy to bypass corporate proxy
-                var httpHandler = new SocketsHttpHandler
+                var httpHandler = new HttpClientHandler
                 {
-                    UseProxy = false,
-                    PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
-                    KeepAlivePingDelay = TimeSpan.FromSeconds(60),
-                    KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
-                    EnableMultipleHttp2Connections = true
+                    UseProxy = false
                 };
 
                 _httpClient = new HttpClient(httpHandler);
