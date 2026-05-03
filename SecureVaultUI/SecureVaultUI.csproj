@@ -11,6 +11,7 @@
     <ProjectReference Include="..\SecureVaultInterface\SecureVaultInterface.csproj" />
     <ProjectReference Include="..\SecureVaultCore\SecureVaultCore.csproj" />
     <ProjectReference Include="..\GcpSecretManagerVault\GcpSecretManagerVault.csproj" />
+    <ProjectReference Include="..\DpapiVault\DpapiVault.csproj" />
   </ItemGroup>
 
 </Project>

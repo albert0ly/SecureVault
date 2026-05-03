@@ -1,7 +1,9 @@
 using SecureVaultInterface;
 using GcpSecretManagerVault;
+using DpapiVault;
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using GcpVault = GcpSecretManagerVault.GcpSecretManagerVault;
 
 namespace SecureVaultUI
@@ -9,32 +11,68 @@ namespace SecureVaultUI
     public partial class MainWindow : Window
     {
         private IKeyVault? _vault;
+        private bool _isGcpMode = false;
 
         public MainWindow()
         {
             InitializeComponent();
         }
 
-        private async void ConnectButton_Click(object sender, RoutedEventArgs e)
+        private void VaultTypeChanged(object sender, RoutedEventArgs e)
         {
-            string projectId = ProjectIdInput.Text?.Trim();
-            
-            if (string.IsNullOrEmpty(projectId))
-            {
-                ShowError("Please enter a GCP Project ID");
+            if (DpapiRadioButton == null || GcpRadioButton == null)
                 return;
+
+            _isGcpMode = GcpRadioButton.IsChecked == true;
+
+            // Toggle visibility of configuration panels
+            if (GcpConfigPanel != null)
+                GcpConfigPanel.Visibility = _isGcpMode ? Visibility.Visible : Visibility.Collapsed;
+
+            if (DpapiConnectButton != null)
+                DpapiConnectButton.Visibility = _isGcpMode ? Visibility.Collapsed : Visibility.Visible;
+
+            // Disconnect current vault if any
+            if (_vault != null && _vault.IsConnected)
+            {
+                _ = _vault.DisconnectAsync();
+                UpdateConnectionStatus(false);
             }
 
+            _vault = null;
+        }
+
+        private async void ConnectButton_Click(object sender, RoutedEventArgs e)
+        {
             try
             {
                 DisableUI();
-                ShowMessage("Connecting to GCP Secret Manager...", false);
+                ShowMessage("Connecting...", false);
 
-                _vault = new GcpVault(projectId);
-                await _vault.ConnectAsync();
+                if (_isGcpMode)
+                {
+                    // GCP Mode
+                    string projectId = ProjectIdInput.Text?.Trim();
+
+                    if (string.IsNullOrEmpty(projectId))
+                    {
+                        ShowError("Please enter a GCP Project ID");
+                        return;
+                    }
+
+                    _vault = new GcpVault(projectId);
+                    await _vault.ConnectAsync();
+                    ShowMessage("Successfully connected to GCP Secret Manager", true);
+                }
+                else
+                {
+                    // DPAPI Mode
+                    _vault = new DpapiVault.DpapiVault();
+                    await _vault.ConnectAsync();
+                    ShowMessage("Successfully connected to DPAPI Vault", true);
+                }
 
                 UpdateConnectionStatus(true);
-                ShowMessage("Successfully connected to GCP Secret Manager", true);
             }
             catch (Exception ex)
             {
@@ -51,7 +89,7 @@ namespace SecureVaultUI
         {
             if (_vault == null || !_vault.IsConnected)
             {
-                ShowError("Not connected to Secret Manager. Please connect first.");
+                ShowError("Not connected to vault. Please connect first.");
                 return;
             }
 
@@ -95,7 +133,7 @@ namespace SecureVaultUI
         {
             if (_vault == null || !_vault.IsConnected)
             {
-                ShowError("Not connected to Secret Manager. Please connect first.");
+                ShowError("Not connected to vault. Please connect first.");
                 return;
             }
 
@@ -140,7 +178,14 @@ namespace SecureVaultUI
         {
             StatusText.Text = isConnected ? "Connected" : "Disconnected";
             StatusIndicator.Fill = isConnected ? System.Windows.Media.Brushes.Green : System.Windows.Media.Brushes.Red;
-            ProjectIdInput.IsEnabled = !isConnected;
+            
+            if (_isGcpMode)
+            {
+                ProjectIdInput.IsEnabled = !isConnected;
+            }
+            
+            DpapiRadioButton.IsEnabled = !isConnected;
+            GcpRadioButton.IsEnabled = !isConnected;
         }
 
         private void ShowMessage(string message, bool isSuccess)
@@ -157,15 +202,27 @@ namespace SecureVaultUI
 
         private void DisableUI()
         {
-            ProjectIdInput.IsEnabled = false;
+            if (_isGcpMode)
+                ProjectIdInput.IsEnabled = false;
+            
             StoreSecretNameInput.IsEnabled = false;
             StoreSecretValueInput.IsEnabled = false;
             RetrieveSecretNameInput.IsEnabled = false;
+            DpapiRadioButton.IsEnabled = false;
+            GcpRadioButton.IsEnabled = false;
         }
 
         private void EnableUI()
         {
-            ProjectIdInput.IsEnabled = _vault == null || !_vault.IsConnected;
+            if (_vault == null || !_vault.IsConnected)
+            {
+                if (_isGcpMode)
+                    ProjectIdInput.IsEnabled = true;
+                
+                DpapiRadioButton.IsEnabled = true;
+                GcpRadioButton.IsEnabled = true;
+            }
+            
             StoreSecretNameInput.IsEnabled = true;
             StoreSecretValueInput.IsEnabled = true;
             RetrieveSecretNameInput.IsEnabled = true;
