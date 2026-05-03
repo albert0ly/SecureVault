@@ -8,6 +8,7 @@ A complete C# solution demonstrating how to use Google Cloud Platform (GCP) Secr
 ? **Interface-Based Architecture** - Easily swap implementations (GCP, AWS, Azure, DPAPI)  
 ? **AES-256 Key Management** - Generate, encrypt, and decrypt keys  
 ? **WPF Desktop UI** - User-friendly application for managing secrets  
+? **REST API** - Production-ready Web API with best practices  
 ? **Async/Await Pattern** - Modern C# asynchronous operations  
 ? **Error Handling** - Comprehensive error handling and user feedback  
 
@@ -19,21 +20,29 @@ SecureVault.sln
 ?   ??? IKeyVault.cs           # Core vault interface
 ??? SecureVaultCore/            # Shared utilities
 ?   ??? KeyManager.cs           # AES-256 key utilities
-??? GcpSecretManagerVault/       # GCP implementation
+??? GcpSecretManagerVault/      # GCP implementation
 ?   ??? GcpSecretManagerVault.cs # GCP Secret Manager adapter
+??? DpapiVault/                 # Windows DPAPI implementation
+?   ??? DpapiVault.cs           # Local Windows vault
 ??? SecureVaultUI/              # WPF Desktop Application
-    ??? MainWindow.xaml         # UI layout
-    ??? MainWindow.xaml.cs      # UI logic
-    ??? App.xaml & App.xaml.cs  # Application entry point
+?   ??? MainWindow.xaml         # UI layout
+?   ??? MainWindow.xaml.cs      # UI logic
+??? SecureVaultApi/             # ASP.NET Core Web API
+    ??? Controllers/
+    ?   ??? SecretsController.cs # REST endpoints
+    ??? Services/
+    ?   ??? VaultFactory.cs      # Provider factory
+    ??? Models/                  # Request/Response models
+    ??? appsettings.json         # Configuration
 ```
 
 ## Quick Start
 
 ### Prerequisites
 
-- .NET 6.0 or later
+- .NET 8.0 or later
 - Visual Studio 2022 or Visual Studio Code
-- A free Google Cloud Platform account
+- A free Google Cloud Platform account (for GCP provider)
 - Google Cloud CLI (optional, for advanced management)
 
 ### Setup Steps
@@ -102,6 +111,122 @@ string? password = await vault.RetrieveAsync("database-password");
 await vault.DisconnectAsync();
 ```
 
+## REST API Usage (Best Practice for Web Applications)
+
+### Running the API
+
+```bash
+dotnet run --project SecureVaultApi
+```
+
+The API will be available at `https://localhost:5001` (or the port shown in console).
+
+### Configuration
+
+Edit `appsettings.json` to choose your vault provider:
+
+```json
+{
+  "VaultSettings": {
+    "Provider": "Dpapi",           // Options: "Gcp" or "Dpapi"
+    "GcpProjectId": "your-project-id",  // Required if Provider is "Gcp"
+    "DpapiVaultPath": ""           // Optional custom path for DPAPI
+  }
+}
+```
+
+**Best Practice:** The vault connection is created **once at application startup** and reused for all requests (singleton pattern).
+
+### API Endpoints
+
+#### 1. Get Single Secret
+
+```http
+GET /api/secrets/{id}
+```
+
+**Example:**
+```bash
+curl https://localhost:5001/api/secrets/database-password
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "database-password",
+  "value": "SuperSecure123!",
+  "found": true
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "id": "non-existent-secret",
+  "value": null,
+  "found": false
+}
+```
+
+#### 2. Get Multiple Secrets (Batch)
+
+```http
+POST /api/secrets/batch
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "secretIds": ["database-password", "api-key", "jwt-secret"]
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://localhost:5001/api/secrets/batch \
+  -H "Content-Type: application/json" \
+  -d '{"secretIds":["database-password","api-key","jwt-secret"]}'
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "database-password",
+    "value": "SuperSecure123!",
+    "found": true
+  },
+  {
+    "id": "api-key",
+    "value": "abc123xyz",
+    "found": true
+  },
+  {
+    "id": "jwt-secret",
+    "value": null,
+    "found": false
+  }
+]
+```
+
+### Swagger UI
+
+When running in Development mode, access interactive API documentation at:
+```
+https://localhost:5001/swagger
+```
+
+### REST API Best Practices Demonstrated
+
+? **Singleton Connection Pattern** - Vault connects once at startup, not per request  
+? **Async/Await** - All operations are fully asynchronous  
+? **Concurrent Batch Retrieval** - Multiple secrets fetched in parallel  
+? **Proper Error Handling** - Graceful degradation for missing secrets  
+? **Structured Logging** - Comprehensive logging for monitoring  
+? **Configuration-Based Provider** - Easily switch between GCP/DPAPI/AWS/Azure  
+? **Swagger Documentation** - Auto-generated API docs  
+
 ## Projects Overview
 
 ### 1. SecureVaultInterface
@@ -141,7 +266,24 @@ GCP Secret Manager implementation of the `IKeyVault` interface.
 **Dependencies:**
 - `Google.Cloud.SecretManager.V1` (NuGet package)
 
-### 4. SecureVaultUI
+### 4. DpapiVault
+Windows DPAPI implementation of the `IKeyVault` interface.
+
+**Key Types:**
+- `DpapiVault` - Windows Data Protection API adapter
+
+**Features:**
+- Encrypted storage using Windows DPAPI
+- User-scoped encryption (secrets only accessible by current user)
+- File-based persistence
+- No external dependencies or cloud services
+
+**Use Case:**
+- Development and testing
+- Windows-only applications
+- Local secret storage without cloud dependency
+
+### 5. SecureVaultUI
 WPF desktop application providing a user interface.
 
 **Key Components:**
@@ -158,21 +300,51 @@ WPF desktop application providing a user interface.
 - Error display and messaging
 - Input validation
 
-## GCP Setup (Quick Checklist)
+### 6. SecureVaultApi (.NET 8 Web API)
+Production-ready REST API demonstrating best practices for using vaults in web applications.
 
-See `GCP_SETUP.md` for detailed instructions. Quick checklist:
+**Key Components:**
+- `SecretsController` - REST endpoints for secret retrieval
+- `VaultFactory` - Factory pattern for creating vault instances
+- `Program.cs` - Dependency injection and singleton configuration
 
-- [ ] Create GCP Project
-- [ ] Enable Secret Manager API
-- [ ] Create Service Account with "Secret Manager Admin" role
-- [ ] Download service account JSON key
-- [ ] Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
-- [ ] Restart application
-- [ ] Test Store/Retrieve operations
+**Features:**
+- Singleton vault connection (initialized at startup)
+- Two REST endpoints: single secret and batch retrieval
+- Configurable provider selection (GCP or DPAPI)
+- Concurrent secret retrieval for batch operations
+- Comprehensive error handling and logging
+- Swagger/OpenAPI documentation
+- Graceful shutdown with vault disconnection
+
+**Best Practices:**
+1. **Connect Once at Startup** - Vault connection is created during app initialization
+2. **Reuse Connection** - Same connection used for all HTTP requests (singleton)
+3. **Never Connect/Disconnect Per Request** - Avoids performance overhead
+4. **Async Operations** - Fully async for scalability
+5. **Configuration-Based** - Provider selection via appsettings.json
+
+## How It Works
+
+### Store Operation (UI Application)
+
+1. User enters Secret Name and Value in UI
+2. Application calls `vault.StoreAsync()`
+3. Vault provider stores the secret (GCP or DPAPI)
+4. A new secret version is created automatically (GCP)
+5. User sees success confirmation
+
+### Retrieve Operation (REST API)
+
+1. HTTP request arrives at `/api/secrets/{id}`
+2. Application uses the singleton vault instance (already connected)
+3. Vault retrieves the secret value
+4. JSON response returned to client
+5. No connection/disconnection overhead per request
 
 ## Configuration
 
-### Environment Variable
+### Environment Variable (GCP Provider)
 
 The application uses the standard GCP authentication via:
 
@@ -182,30 +354,31 @@ GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\service-account-key.json
 
 Set this environment variable to your service account key file path.
 
-### Application Configuration
+### REST API Configuration
+
+In `SecureVaultApi/appsettings.json`:
+
+```json
+{
+  "VaultSettings": {
+    "Provider": "Dpapi",           // "Gcp" or "Dpapi"
+    "GcpProjectId": "",            // Your GCP project ID (for GCP provider)
+    "DpapiVaultPath": ""           // Optional: custom DPAPI vault path
+  }
+}
+```
+
+**To switch providers:**
+1. Change `Provider` to `"Gcp"` or `"Dpapi"`
+2. Set `GcpProjectId` if using GCP
+3. Restart the API (connection happens at startup)
+
+### Desktop UI Configuration
 
 In the UI:
 1. Enter your GCP Project ID (found in GCP Console)
 2. Click "Connect"
 3. Use the Store/Retrieve sections
-
-## How It Works
-
-### Store Operation
-
-1. User enters Secret Name and Value in UI
-2. Application calls `vault.StoreAsync()`
-3. GCP Secret Manager creates or updates the secret
-4. A new secret version is created automatically
-5. User sees success confirmation
-
-### Retrieve Operation
-
-1. User enters Secret Name in UI
-2. Application calls `vault.RetrieveAsync()`
-3. GCP retrieves the latest version of the secret
-4. Secret value is displayed in the output field
-5. User sees success confirmation
 
 ## Extending the Solution
 
@@ -214,16 +387,16 @@ In the UI:
 1. Create `AwsSecretsManagerVault` project
 2. Implement `IKeyVault` interface
 3. Use AWS SDK for .NET
-4. Reference in UI project
-5. Change instantiation: `IKeyVault vault = new AwsSecretsManagerVault();`
+4. Add to `VaultFactory.cs` in SecureVaultApi
+5. Update configuration: `"Provider": "Aws"`
 
 ### Add Azure Key Vault Support
 
 1. Create `AzureKeyVaultImpl` project
 2. Implement `IKeyVault` interface
 3. Use Azure Identity & Key Vault SDK
-4. Reference in UI project
-5. Change instantiation: `IKeyVault vault = new AzureKeyVaultImpl();`
+4. Add to `VaultFactory.cs` in SecureVaultApi
+5. Update configuration: `"Provider": "Azure"`
 
 ### Add Local DPAPI Support
 
@@ -284,9 +457,29 @@ In the UI:
 ## NuGet Dependencies
 
 - `Google.Cloud.SecretManager.V1` (for GCP implementation)
+- `Microsoft.AspNetCore.OpenApi` (for REST API)
+- `Swashbuckle.AspNetCore` (for Swagger/OpenAPI documentation)
 - Standard .NET libraries (no other external dependencies)
 
 ## Testing the Setup
+
+### REST API Testing
+
+```bash
+# Start the API
+dotnet run --project SecureVaultApi
+
+# Store a secret using the UI first
+dotnet run --project SecureVaultUI
+
+# Then retrieve via REST API
+curl https://localhost:5001/api/secrets/test-secret
+
+# Batch retrieval
+curl -X POST https://localhost:5001/api/secrets/batch \
+  -H "Content-Type: application/json" \
+  -d '{"secretIds":["secret1","secret2","secret3"]}'
+```
 
 ### Unit Test Example
 
