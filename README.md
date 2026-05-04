@@ -11,6 +11,20 @@ A complete C# solution demonstrating how to use Google Cloud Platform (GCP) Secr
 ? **REST API** - Production-ready Web API with best practices  
 ? **Async/Await Pattern** - Modern C# asynchronous operations  
 ? **Error Handling** - Comprehensive error handling and user feedback  
+? **Server Deployment Ready** - Complete guide for Windows Server deployment with service accounts  
+? **Automated Setup Scripts** - PowerShell scripts for easy credential configuration  
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| **[GETTING_STARTED.md](GETTING_STARTED.md)** | Quick start guide for development |
+| **[GCP_SETUP.md](GCP_SETUP.md)** | Detailed GCP configuration with automated setup script |
+| **[CLONE_SETUP_GUIDE.md](CLONE_SETUP_GUIDE.md)** | Complete guide for cloning to a new computer |
+| **[SERVER_DEPLOYMENT_GUIDE.md](SERVER_DEPLOYMENT_GUIDE.md)** | ??? **Server deployment instructions** |
+| **[AUTHENTICATION_EXPLAINED.md](AUTHENTICATION_EXPLAINED.md)** | Understanding ADC vs Service Account authentication |
+| **[SETUP_SCRIPT_REFERENCE.md](SETUP_SCRIPT_REFERENCE.md)** | Complete reference for setup-gcp-credentials.ps1 |
+| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** | Quick command reference and troubleshooting |
 
 ## Solution Structure
 
@@ -37,6 +51,39 @@ SecureVault.sln
 ```
 
 ## Quick Start
+
+### ?? Cloning to a New Computer?
+
+**See [`CLONE_SETUP_GUIDE.md`](CLONE_SETUP_GUIDE.md)** for complete step-by-step instructions on setting up SecureVault on a new computer, including:
+- Finding and copying the GCP service account key
+- Setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+- Automated setup script
+- Troubleshooting guide
+
+### ??? Deploying to a Server?
+
+**See [`SERVER_DEPLOYMENT_GUIDE.md`](SERVER_DEPLOYMENT_GUIDE.md)** for complete server deployment instructions, including:
+- Service account key setup for servers
+- Setting environment variables (Machine-level)
+- Windows Service installation
+- IIS deployment
+- Security best practices
+- Firewall configuration
+- Monitoring and troubleshooting
+
+**Quick server setup:**
+```powershell
+# 1. Download service account key from GCP Console
+# 2. Transfer securely to server
+# 3. Set environment variable (as Administrator)
+[System.Environment]::SetEnvironmentVariable(
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "C:\SecureVault\.gcp\securevault-key.json",
+    [System.EnvironmentVariableTarget]::Machine
+)
+# 4. Restart server
+# 5. Deploy application
+```
 
 ### Prerequisites
 

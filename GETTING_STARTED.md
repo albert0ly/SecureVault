@@ -155,24 +155,80 @@ WPF desktop application with user-friendly interface.
 
 ## ?? Configuration
 
-### Environment Variable Setup (Windows)
+### Automated Setup Script (Recommended)
+
+The easiest way to set up GCP credentials is to use the automated setup script:
+
+```powershell
+# Run the setup script
+.\setup-gcp-credentials.ps1
+```
+
+**What the script does:**
+1. ? Creates secure credentials directory (`%USERPROFILE%\.gcp`)
+2. ? Guides you through downloading the GCP service account key
+3. ? Searches for JSON key files in common locations
+4. ? Validates the key file exists
+5. ? Sets the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+6. ? Verifies the setup
+
+**Script features:**
+- Interactive prompts
+- Automatic error checking
+- Colored output for easy reading
+- Validates file paths
+- Sets environment variable permanently
+
+**After running the script:**
+- Restart Visual Studio or PowerShell
+- Verify by running: `$env:GOOGLE_APPLICATION_CREDENTIALS`
+
+---
+
+### Manual Environment Variable Setup (Alternative)
+
+If you prefer to set up manually:
+
+#### Option 1: Windows GUI
 
 1. Press **Win + X** ? Select **System**
 2. Click **Advanced system settings**
 3. Click **Environment Variables...**
 4. Under "User variables", click **New...**
 5. Variable name: `GOOGLE_APPLICATION_CREDENTIALS`
-6. Variable value: `C:\path\to\service-account-key.json`
+6. Variable value: `C:\Users\<username>\.gcp\securevault-key.json`
 7. Click **OK** ? **OK** ? **OK**
 8. **Restart Visual Studio** (important!)
 
-### Verify Configuration
-
-After restarting, you can verify:
+#### Option 2: PowerShell Command
 
 ```powershell
+# Set the environment variable permanently
+setx GOOGLE_APPLICATION_CREDENTIALS "C:\Users\<username>\.gcp\securevault-key.json"
+
+# Restart PowerShell or Visual Studio after this
+```
+
+### Verify Configuration
+
+After setup, verify the configuration:
+
+```powershell
+# Check environment variable
 $env:GOOGLE_APPLICATION_CREDENTIALS
-# Should output: C:\path\to\service-account-key.json
+
+# Verify file exists
+Test-Path $env:GOOGLE_APPLICATION_CREDENTIALS
+
+# Run verification script
+.\verify-setup.ps1
+```
+
+Expected output:
+```
+C:\Users\albertly\.gcp\securevault-key.json
+True
+? ALL CHECKS PASSED!
 ```
 
 ## ?? Common Tasks

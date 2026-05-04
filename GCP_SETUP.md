@@ -115,35 +115,182 @@ A service account is a special account used by applications to authenticate with
 
 The GCP SDK automatically discovers credentials from environment variables. You need to set the path to your service account key.
 
-### Option A: Windows Environment Variable (Recommended for Development)
+### Option A: Automated Setup Script (Recommended)
+
+Use the provided PowerShell script for the easiest setup:
+
+```powershell
+# Navigate to the repository directory
+cd C:\Users\YourName\source\repos\SecureVault
+
+# Run the setup script
+.\setup-gcp-credentials.ps1
+```
+
+**What the script does:**
+
+1. ? Creates credentials directory at `%USERPROFILE%\.gcp` if it doesn't exist
+2. ? Shows instructions for downloading the GCP service account key
+3. ? Searches for JSON key files in common locations:
+   - Downloads folder
+   - `.gcp` directory
+   - SecureVault repository folder
+4. ? Prompts you to enter the full path to your key file
+5. ? Validates that the file exists
+6. ? Sets the `GOOGLE_APPLICATION_CREDENTIALS` environment variable permanently
+7. ? Displays the current value for verification
+
+**Example output:**
+```
+=== SecureVault GCP Credentials Setup ===
+
+? Credentials directory exists: C:\Users\YourName\.gcp
+
+=== Instructions to Download GCP Service Account Key ===
+
+1. Go to: https://console.cloud.google.com
+2. Select your SecureVault project
+3. Navigate to: IAM & Admin ? Service Accounts
+...
+
+=== Searching for JSON key files ===
+Found JSON files in C:\Users\YourName\Downloads
+  - C:\Users\YourName\Downloads\secure-vault-app-xxxxx.json
+
+=== Set Environment Variable ===
+Please enter the FULL path to your GCP service account key file:
+Example: C:\Users\YourName\.gcp\securevault-key.json
+
+Key file path: C:\Users\YourName\.gcp\securevault-key.json
+? File found: C:\Users\YourName\.gcp\securevault-key.json
+? Environment variable set successfully!
+
+Current value: C:\Users\YourName\.gcp\securevault-key.json
+
+=== IMPORTANT ===
+Please RESTART Visual Studio for the changes to take effect!
+
+? Setup complete!
+```
+
+**After running the script:**
+- **Restart Visual Studio** (or your terminal/PowerShell)
+- Verify by running: `$env:GOOGLE_APPLICATION_CREDENTIALS`
+- Run the verification script: `.\verify-setup.ps1`
+
+---
+
+### Option B: Windows Environment Variable (Manual Setup)
+
+If you prefer to set up manually without the script:
 
 1. **Locate your JSON key file** from Step 4.2
    - Note the full file path, e.g., `C:\Users\YourName\Downloads\secure-vault-app-xxxxx.json`
 
-2. **Set Environment Variable**:
+2. **Move to secure location** (recommended):
+   ```powershell
+   # Create .gcp directory
+   mkdir "$env:USERPROFILE\.gcp" -Force
+   
+   # Move the key file
+   Move-Item "C:\Users\YourName\Downloads\secure-vault-app-xxxxx.json" "$env:USERPROFILE\.gcp\securevault-key.json"
+   ```
+
+3. **Set Environment Variable**:
    - Press **Win + X** and select **System**
    - Click **"Advanced system settings"** on the left
    - Click **"Environment Variables"** button
    - Under "User variables for [YourName]", click **"New..."**
    - **Variable name**: `GOOGLE_APPLICATION_CREDENTIALS`
-   - **Variable value**: Paste the full path to your JSON key file
+   - **Variable value**: `C:\Users\YourName\.gcp\securevault-key.json`
    - Click **"OK"** on all dialogs
 
-3. **Restart Your Application**:
+4. **Restart Your Application**:
    - After setting the environment variable, you must close and reopen your C# application
    - The application will now automatically use the service account credentials
 
-### Option B: Programmatic Configuration (Alternative)
+---
+
+### Option C: PowerShell Command (Quick Manual Setup)
+
+```powershell
+# Set the environment variable permanently
+setx GOOGLE_APPLICATION_CREDENTIALS "$env:USERPROFILE\.gcp\securevault-key.json"
+
+# Restart PowerShell or Visual Studio after this
+```
+
+---
+
+### Option D: Programmatic Configuration (Alternative)
 
 If you prefer to configure credentials in code instead of environment variables:
 
 ```csharp
 // In your MainWindow.xaml.cs, before creating the vault:
 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", 
-    @"C:\path\to\secure-vault-app-xxxxx.json");
+    @"C:\Users\YourName\.gcp\securevault-key.json");
 
 _vault = new GcpSecretManagerVault(projectId);
 await _vault.ConnectAsync();
+```
+
+**Note:** This method is less secure as paths may be hardcoded in source code.
+
+---
+
+### Verify Your Setup
+
+After configuration, verify everything is set up correctly:
+
+```powershell
+# Check environment variable
+$env:GOOGLE_APPLICATION_CREDENTIALS
+
+# Verify file exists
+Test-Path $env:GOOGLE_APPLICATION_CREDENTIALS
+
+# Run the comprehensive verification script
+.\verify-setup.ps1
+```
+
+Expected output from `verify-setup.ps1`:
+```
+========================================
+ SecureVault Environment Verification
+========================================
+
+[1/5] Checking GOOGLE_APPLICATION_CREDENTIALS environment variable...
+  ? PASS: Environment variable is set
+    Value: C:\Users\YourName\.gcp\securevault-key.json
+
+[2/5] Checking current PowerShell session...
+  ? PASS: Set in current session
+
+[3/5] Checking if key file exists...
+  ? PASS: File exists
+
+[4/5] Validating key file content...
+  ? PASS: Valid service account key
+    Type: service_account
+    Project ID: securevault-12345
+    Client Email: secure-vault-app@securevault-12345.iam.gserviceaccount.com
+
+[5/5] Checking .NET SDK...
+  ? PASS: .NET SDK installed
+    Version: 8.0.xxx
+
+========================================
+ Summary
+========================================
+
+? ALL CHECKS PASSED!
+
+Your environment is properly configured.
+You can now run the SecureVault applications:
+
+  WPF UI:  dotnet run --project SecureVaultUI
+  Web API: dotnet run --project SecureVaultApi
 ```
 
 ---
